@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>마트나침반 | 실시간 100g당 가격비교</title>
   
   <!-- Tailwind CSS CDN -->
@@ -12,7 +15,7 @@
   <!-- HTML5 QR Code / Barcode Scanner -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.0">
   <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased font-sans">
@@ -75,7 +78,7 @@
         <p id="loadingText" class="text-xs font-bold text-slate-600">실시간 가격을 비교 중입니다...</p>
       </div>
 
-      <!-- 📦 Main Search Result Section (100% Dynamic) -->
+      <!-- 📦 Main Search Result Section (100% Dynamic from API) -->
       <div id="resultSection" class="hidden space-y-3">
         
         <!-- Product Header Card with Real Package Image -->
@@ -177,9 +180,9 @@
 
   </div>
 
-  <!-- Load Scripts -->
-  <script src="data.js"></script>
-  <script src="supabaseClient.js"></script>
-  <script src="app.js"></script>
+  <!-- Load Scripts with Cache-Busters -->
+  <script src="data.js?v=3.0"></script>
+  <script src="supabaseClient.js?v=3.0"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>
