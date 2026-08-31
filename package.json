@@ -4,6 +4,7 @@
   "description": "Realtime Mart & Online Price Scanner Backend",
   "main": "server.js",
   "scripts": {
+    "build": "echo 'Static build ready'",
     "start": "node server.js"
   },
   "dependencies": {
