@@ -1,0 +1,15 @@
+{
+  "name": "mart-price-scanner-live",
+  "version": "1.0.0",
+  "description": "Realtime Mart & Online Price Scanner Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12"
+  }
+}

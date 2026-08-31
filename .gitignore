@@ -1,0 +1,7 @@
+# 🔒 깃허브(Git) 업로드 제외 목록 (보안 파일)
+.env
+.env.local
+.env.*.local
+node_modules/
+*.log
+.DS_Store
