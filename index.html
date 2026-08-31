@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>마트나침반 | 실시간 마트 vs 온라인 가격비교</title>
+  <title>마트나침반 | 내 근처 마트 vs 온라인 100g당 단가비교</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -15,172 +15,125 @@
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased">
+<body class="bg-slate-100 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased">
 
-  <!-- Mobile App Frame Container -->
-  <div class="w-full max-w-md min-h-screen bg-white shadow-xl flex flex-col relative pb-24 border-x border-slate-100">
+  <!-- Mobile App Frame (Max 480px on Desktop) -->
+  <div class="w-full max-w-md min-h-screen bg-white shadow-2xl flex flex-col relative pb-20 border-x border-slate-200">
     
-    <!-- Minimalist Top Navigation Header -->
-    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+    <!-- Ultra Clean Header with Location Picker -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-        <h1 class="text-base font-extrabold tracking-tight text-slate-900">마트나침반</h1>
+        <h1 class="text-base font-black tracking-tight text-slate-900">마트나침반</h1>
       </div>
-      <div class="flex items-center space-x-1.5">
-        <button id="btnOpenUserModal" class="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition text-xs font-bold text-slate-700">
-          <i data-lucide="user" class="w-3.5 h-3.5 text-blue-600"></i>
-          <span id="headerUserNickname">로그인</span>
-        </button>
-        <button id="btnOpenScanner" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-700" title="바코드 스캔">
-          <i data-lucide="camera" class="w-5 h-5"></i>
-        </button>
-      </div>
+
+      <!-- Neighborhood Location Selector -->
+      <button id="btnSelectLocation" class="flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition text-xs font-bold text-slate-700">
+        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i>
+        <span id="currentLocationName">서울 강남구</span>
+        <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+      </button>
     </header>
 
-    <!-- Main Scrollable Content -->
-    <main class="flex-1 px-4 py-3.5 space-y-4 overflow-y-auto">
+    <!-- Main Content Area -->
+    <main class="flex-1 px-4 py-3.5 space-y-3.5 overflow-y-auto">
 
-      <!-- 🔍 Clean Search Bar -->
+      <!-- 🔍 Minimalist Search Bar -->
       <div class="relative">
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="상품명 또는 880 바코드를 입력하세요" 
-          class="w-full pl-10 pr-16 py-3 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+          placeholder="상품명이나 바코드를 검색하세요 (예: 신라면, 햇반)" 
+          class="w-full pl-9 pr-14 py-2.5 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-xl text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
         >
-        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
         <button 
           id="btnSearch" 
-          class="absolute right-2 top-2 bottom-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center shadow-xs"
+          class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-black transition"
         >
           검색
         </button>
       </div>
 
-      <!-- ⭐ Personalized Section: "내 맞춤 단골 & 최근 상품" (DB 연동) -->
-      <div class="space-y-2">
-        <div class="flex items-center justify-between px-1">
-          <span class="text-xs font-bold text-slate-800 flex items-center">
-            <i data-lucide="star" class="w-3.5 h-3.5 text-amber-500 mr-1 fill-amber-500"></i>
-            <span id="favoritesTitle">내 단골 & 최근 찾은 상품</span>
-          </span>
-          <span class="text-[11px] text-slate-400">DB 실시간 연동</span>
-        </div>
-
-        <!-- Dynamic Horizontal Favorites Carousel from DB -->
-        <div id="favoritesList" class="flex space-x-2 overflow-x-auto no-scrollbar pb-1 pt-0.5">
-          <!-- Populated dynamically by JS -->
-        </div>
-      </div>
-
-      <!-- 📦 Main Scanned / Selected Product Card with Real Package Image -->
-      <div id="productSummaryCard" class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 space-y-3.5">
-        <div class="flex space-x-3.5">
-          <div class="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex-shrink-0 flex items-center justify-center">
-            <img id="productImg" src="" alt="상품 실물 사진" class="w-full h-full object-cover">
-            <button id="btnToggleFavorite" class="absolute top-1.5 right-1.5 p-1 bg-white/90 backdrop-blur-xs rounded-full text-slate-400 hover:text-rose-500 transition shadow-xs">
-              <i data-lucide="heart" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-
-          <div class="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-            <div>
-              <div class="flex items-center space-x-1.5">
-                <span id="productCategory" class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md"></span>
-                <span id="productSpec" class="text-[11px] text-slate-400 truncate"></span>
-              </div>
-              <h2 id="productName" class="text-base font-black text-slate-900 truncate mt-1"></h2>
+      <!-- 📦 Main Product Card with 100g Unit Price Highlights -->
+      <div id="productSummaryCard" class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 space-y-2.5">
+        <div class="flex space-x-3 items-center">
+          <img id="productImg" src="" alt="상품 실물 사진" class="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-white flex-shrink-0">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-1.5">
+              <span id="productCategory" class="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded"></span>
+              <span id="productStandardUnit" class="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">기준: 100g당</span>
             </div>
-            
-            <!-- Mart Offline Price Input -->
-            <div class="flex items-center space-x-2 bg-slate-50 rounded-xl px-2.5 py-1.5 border border-slate-100">
-              <span class="text-xs text-slate-500 whitespace-nowrap">마트 현장가:</span>
-              <div class="flex items-center flex-1">
-                <input 
-                  type="number" 
-                  id="martPriceInput" 
-                  class="w-16 px-1 py-0.5 bg-white border border-slate-200 rounded text-xs font-black text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                <span class="text-xs font-bold text-slate-700 ml-1">원</span>
-              </div>
-              <button id="btnRecalculate" class="text-[11px] text-blue-600 font-bold px-2 py-1 hover:bg-blue-50 rounded transition">
-                재계산
-              </button>
-            </div>
+            <h2 id="productName" class="text-sm font-black text-slate-900 truncate mt-0.5"></h2>
           </div>
         </div>
 
-        <!-- 1-Second Verdict Banner -->
-        <div id="verdictBanner" class="p-3.5 rounded-2xl flex items-center justify-between transition-all">
+        <!-- 1-Second Unit Price Verdict Banner -->
+        <div id="verdictBanner" class="p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition">
           <!-- Populated by JS -->
         </div>
       </div>
 
-      <!-- 3-Way Main Comparison Tabs -->
-      <div id="tabNavigation" class="space-y-2">
-        <div class="flex p-1 bg-slate-100 rounded-2xl font-bold text-xs text-slate-500 space-x-1">
-          <button id="tabMarts" class="flex-1 py-2.5 rounded-xl transition text-slate-900 bg-white shadow-xs">
-            🏬 마트 5사 비교
-          </button>
-          <button id="tabOnline" class="flex-1 py-2.5 rounded-xl transition hover:text-slate-900">
-            🚀 온라인/로켓
-          </button>
-          <button id="tabAlternatives" class="flex-1 py-2.5 rounded-xl transition hover:text-slate-900 relative">
-            💡 가성비 대체재
-            <span class="w-1.5 h-1.5 bg-amber-500 rounded-full absolute top-2 right-3"></span>
-          </button>
+      <!-- 🏬 Section 1: 내 근처 오프라인 마트 (단가 기준) -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-xs font-black text-slate-900 flex items-center">
+            <i data-lucide="store" class="w-3.5 h-3.5 text-blue-600 mr-1"></i>
+            내 근처 마트 실시간 가격
+          </span>
+          <span class="text-[10px] font-bold text-slate-400">100g당 단가순</span>
         </div>
-
-        <!-- Sub-filter (Only in Online tab) -->
-        <div id="onlineSubFilters" class="hidden flex items-center justify-end space-x-2 text-xs px-1">
-          <button id="subFastest" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
-            ⚡ 빠른 배송순
-          </button>
-          <button id="subCheapest" class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700">
-            💰 최저가순
-          </button>
+        <div id="martsListContainer" class="space-y-1.5">
+          <!-- Populated by JS -->
         </div>
       </div>
 
-      <!-- Comparison List Output Container -->
-      <div id="offersContainer" class="space-y-2">
-        <!-- Populated by JS -->
+      <!-- 🌐 Section 2: 온라인 실시간 최저가 (배송비 포함) -->
+      <div class="space-y-2 pt-1">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-xs font-black text-slate-900 flex items-center">
+            <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-600 mr-1"></i>
+            온라인 실시간 최저가
+          </span>
+          <span class="text-[10px] font-bold text-slate-400">배송비 포함</span>
+        </div>
+        <div id="onlineListContainer" class="space-y-1.5">
+          <!-- Populated by JS -->
+        </div>
       </div>
 
     </main>
 
-    <!-- User Login / Profile Modal -->
-    <div id="userModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
-      <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div class="flex items-center space-x-2">
-            <i data-lucide="user-check" class="w-5 h-5 text-blue-600"></i>
-            <h3 class="font-bold text-slate-900 text-sm">개인 맞춤 로그인 / 계정</h3>
-          </div>
-          <button id="btnCloseUserModal" class="text-slate-400 hover:text-slate-600">
-            <i data-lucide="x" class="w-5 h-5"></i>
+    <!-- Location Selection Modal -->
+    <div id="locationModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+      <div class="w-full max-w-xs bg-white rounded-2xl shadow-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <span class="font-black text-slate-900 text-sm">내 동네 마트 위치 설정</span>
+          <button id="btnCloseLocationModal" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
-
-        <div class="space-y-3 text-xs">
-          <p class="text-slate-500 leading-relaxed">
-            닉네임이나 이메일을 입력하시면 <strong>어떤 스마트폰에서 접속해도 내 단골 상품과 검색 기록</strong>이 Supabase DB에서 그대로 불러와집니다!
-          </p>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">내 닉네임 또는 이메일</label>
-            <input type="text" id="inputNickname" placeholder="예: 성호, 장보기대장, myid@kakao.com" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm font-bold">
-          </div>
-        </div>
-
-        <div class="flex space-x-2 pt-1">
-          <button id="btnLoginSubmit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition shadow-md">
-            로그인 및 내 DB 연결
-          </button>
+        <div id="neighborhoodOptions" class="space-y-1.5 text-xs">
+          <!-- Populated by JS -->
         </div>
       </div>
     </div>
 
-    <!-- Scan Barcode Camera Modal -->
+    <!-- Floating Bottom Bar for Camera Barcode Scan -->
+    <div class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 flex items-center justify-between z-20">
+      <div class="text-[11px] font-bold text-slate-500">
+        마트에서 바코드 찍고 100g당 단가 즉시 비교
+      </div>
+      <button 
+        id="btnOpenScanner" 
+        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-md flex items-center space-x-1 transition active:scale-95"
+      >
+        <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+        <span>바코드 스캔</span>
+      </button>
+    </div>
+
+    <!-- Scan Barcode Modal -->
     <div id="cameraModal" class="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-between p-4 hidden">
       <div class="w-full flex items-center justify-between text-white pt-2">
         <span class="font-bold text-sm">바코드 스캔</span>
@@ -189,31 +142,13 @@
         </button>
       </div>
 
-      <div class="w-full max-w-sm flex-1 flex flex-col items-center justify-center my-4 relative">
-        <div id="reader" class="w-full rounded-3xl overflow-hidden shadow-2xl border-2 border-white/40 bg-black"></div>
-        <p class="text-xs text-slate-300 mt-4 text-center bg-black/50 px-3.5 py-1.5 rounded-full">
-          상품 바코드를 사각형 안에 비춰주세요
+      <div class="w-full max-w-xs flex-1 flex flex-col items-center justify-center my-4 relative">
+        <div id="reader" class="w-full rounded-2xl overflow-hidden border border-white/30 bg-black"></div>
+        <p class="text-xs text-slate-300 mt-3 text-center">
+          바코드를 사각형 안에 비추면 100g당 단가를 비교합니다
         </p>
       </div>
     </div>
-
-    <!-- Bottom App Navigation Bar -->
-    <nav class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-100 px-6 py-2.5 flex items-center justify-around z-20">
-      <button id="navHome" class="flex flex-col items-center text-blue-600 space-y-0.5">
-        <i data-lucide="compass" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">가격비교</span>
-      </button>
-      <button id="navScan" class="flex flex-col items-center text-slate-400 hover:text-slate-800 space-y-0.5">
-        <div class="w-10 h-10 -mt-5 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
-          <i data-lucide="camera" class="w-5 h-5"></i>
-        </div>
-        <span class="text-[10px] font-medium text-slate-700">스캔</span>
-      </button>
-      <button id="navFavorites" class="flex flex-col items-center text-slate-400 hover:text-slate-800 space-y-0.5">
-        <i data-lucide="star" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">내 단골</span>
-      </button>
-    </nav>
 
   </div>
 
