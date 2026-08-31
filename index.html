@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>마트나침반 | 실시간 100g당 가격비교</title>
+  <title>마트나침반 | AI 장바구니 최적화 & 실시간 단가비교</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +15,7 @@
   <!-- HTML5 QR Code / Barcode Scanner -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
-  <link rel="stylesheet" href="style.css?v=3.0">
+  <link rel="stylesheet" href="style.css?v=4.0">
   <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased font-sans">
@@ -30,12 +30,20 @@
         <h1 class="text-base font-black tracking-tight text-slate-900">마트나침반</h1>
       </div>
 
-      <!-- Neighborhood Location Selector -->
-      <button id="btnSelectLocation" class="flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition text-xs font-bold text-slate-700">
-        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i>
-        <span id="currentLocationName">서울 강남구</span>
-        <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
-      </button>
+      <div class="flex items-center space-x-2">
+        <!-- Neighborhood Location Selector -->
+        <button id="btnSelectLocation" class="flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition text-xs font-bold text-slate-700">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i>
+          <span id="currentLocationName">서울 강남구</span>
+          <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+        </button>
+
+        <!-- Cart Floating Toggle Button -->
+        <button id="btnOpenCartModal" class="relative p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full transition">
+          <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+          <span id="cartBadgeCount" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+        </button>
+      </div>
     </header>
 
     <!-- Main Content Area -->
@@ -59,14 +67,25 @@
           </button>
         </div>
 
-        <!-- 🌟 Single Unified Smart Camera Button -->
-        <button 
-          id="btnOpenSmartCamera" 
-          class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl font-black text-sm shadow-md shadow-blue-500/20 flex items-center justify-center space-x-2 transition active:scale-98"
-        >
-          <i data-lucide="camera" class="w-4 h-4"></i>
-          <span>AI 카메라 스캔 (바코드 & 사진 자동인식)</span>
-        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <!-- 🌟 Unified Smart Camera Button -->
+          <button 
+            id="btnOpenSmartCamera" 
+            class="py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-black text-xs shadow-md shadow-blue-500/20 flex items-center justify-center space-x-1.5 transition active:scale-98"
+          >
+            <i data-lucide="camera" class="w-4 h-4"></i>
+            <span>AI 카메라 스캔</span>
+          </button>
+
+          <!-- 🛒 Cart Optimizer Quick Trigger Button -->
+          <button 
+            id="btnQuickCart" 
+            class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl border border-slate-200 font-black text-xs flex items-center justify-center space-x-1.5 transition active:scale-98"
+          >
+            <i data-lucide="shopping-cart" class="w-4 h-4 text-blue-600"></i>
+            <span>장바구니 묶음비교</span>
+          </button>
+        </div>
       </div>
 
       <!-- Hidden Native Camera File Input -->
@@ -83,14 +102,22 @@
         
         <!-- Product Header Card with Real Package Image -->
         <div class="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200 space-y-2.5">
-          <div class="flex space-x-3 items-center">
-            <div id="productImgContainer" class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white flex-shrink-0 flex items-center justify-center">
-              <img id="productImg" src="" alt="실제 제품 패키지" class="w-full h-full object-contain p-1">
+          <div class="flex space-x-3 items-center justify-between">
+            <div class="flex space-x-3 items-center min-w-0">
+              <div id="productImgContainer" class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white flex-shrink-0 flex items-center justify-center">
+                <img id="productImg" src="" alt="실제 제품 패키지" class="w-full h-full object-contain p-1">
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">기준: 100g당 정밀 환산</span>
+                <h2 id="productName" class="text-sm font-black text-slate-900 truncate mt-1"></h2>
+              </div>
             </div>
-            <div class="flex-1 min-w-0">
-              <span class="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">기준: 100g/개당 정밀 환산</span>
-              <h2 id="productName" class="text-sm font-black text-slate-900 truncate mt-1"></h2>
-            </div>
+
+            <!-- Add to Cart Button -->
+            <button id="btnAddToCart" class="px-2.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-black transition flex flex-col items-center flex-shrink-0">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span class="text-[10px] mt-0.5">담기</span>
+            </button>
           </div>
 
           <!-- 1-Second Unit Price Verdict Banner -->
@@ -130,6 +157,52 @@
       </div>
 
     </main>
+
+    <!-- 🛒 AI Smart Cart Splitter & Multi-Store Comparison Modal -->
+    <div id="cartModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end hidden">
+      <div class="w-full max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl p-4 space-y-3.5 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-base font-black text-slate-900">🛒 AI 장바구니 최적화</span>
+            <span id="cartItemCountBadge" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">0개 품목</span>
+          </div>
+          <button id="btnCloseCartModal" class="text-slate-400 hover:text-slate-600 p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Cart Quick Add Input -->
+        <div class="flex space-x-2">
+          <input 
+            type="text" 
+            id="cartQuickInput" 
+            placeholder="장바구니에 담을 상품명 (예: 삼겹살, 우유, 라면, 계란)" 
+            class="flex-1 px-3 py-2 bg-slate-100 text-xs font-bold rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none"
+          >
+          <button id="btnQuickAddCart" class="px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-black">
+            추가
+          </button>
+        </div>
+
+        <!-- Cart Item List Chips -->
+        <div id="cartItemsContainer" class="flex flex-wrap gap-1.5 py-1">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- 💡 AI Golden Split Recommendation Result Banner -->
+        <div id="aiOptimizationBanner" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-3.5 space-y-2">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Mart by Mart Total Price Comparison Matrix -->
+        <div class="space-y-2">
+          <span class="text-xs font-black text-slate-900">🏬 마트별 총 결제 금액 비교</span>
+          <div id="martCartTotalsContainer" class="space-y-1.5 text-xs">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Location Selection Modal -->
     <div id="locationModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
@@ -180,9 +253,9 @@
 
   </div>
 
-  <!-- Load Scripts with Cache-Busters -->
-  <script src="data.js?v=3.0"></script>
-  <script src="supabaseClient.js?v=3.0"></script>
-  <script src="app.js?v=3.0"></script>
+  <!-- Load Scripts -->
+  <script src="data.js?v=4.0"></script>
+  <script src="supabaseClient.js?v=4.0"></script>
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>
