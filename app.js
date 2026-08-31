@@ -1,4 +1,4 @@
-// 🛒 깔끔한 마트 5사 & 온라인 통합 가격비교 및 개인화 엔진
+// 🛒 마트 5사 & 온라인 통합 가격비교 및 개인화 엔진
 
 let currentProduct = null;
 let activeMainTab = 'marts'; // 'marts' | 'online' | 'alternatives'
@@ -10,10 +10,10 @@ let isScannerRunning = false;
 document.addEventListener('DOMContentLoaded', async () => {
   lucide.createIcons();
   setupEventListeners();
-  await loadFavorites();
-  loadApiSettings();
+  updateUserHeader();
+  await loadUserPersonalization();
   
-  // Default product
+  // Default product selection
   selectProductByKeyword("신라면");
 });
 
@@ -43,6 +43,11 @@ function setupEventListeners() {
   document.getElementById('navScan').addEventListener('click', openScanner);
   document.getElementById('btnCloseScanner').addEventListener('click', closeScanner);
 
+  // User Login Modal
+  document.getElementById('btnOpenUserModal').addEventListener('click', toggleUserModal);
+  document.getElementById('btnCloseUserModal').addEventListener('click', toggleUserModal);
+  document.getElementById('btnLoginSubmit').addEventListener('click', handleLogin);
+
   // Bottom Navigation
   document.getElementById('navHome').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -64,46 +69,91 @@ function setupEventListeners() {
       renderCurrentTabContent();
     }
   });
-
-  // API Settings Modal
-  document.getElementById('btnOpenApiSettings').addEventListener('click', toggleApiSettings);
-  document.getElementById('btnCloseApiSettings').addEventListener('click', toggleApiSettings);
-  document.getElementById('btnSaveApiKeys').addEventListener('click', saveApiSettings);
-
-  // Preset buttons inside scanner modal
-  document.querySelectorAll('.modal-test-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const keyword = e.currentTarget.dataset.keyword;
-      if (keyword) {
-        selectProductByKeyword(keyword);
-        closeScanner();
-      }
-    });
-  });
 }
 
-// 3. Personalized Favorites (100% 무료 Supabase DB + 로컬 영구 연동)
-async function loadFavorites() {
+// 3. User Login & Personalization Management
+function updateUserHeader() {
+  const user = supabaseDB.user;
+  const headerNickname = document.getElementById('headerUserNickname');
+  if (user && user.isLoggedIn) {
+    headerNickname.textContent = user.nickname;
+  } else {
+    headerNickname.textContent = '로그인';
+  }
+}
+
+function toggleUserModal() {
+  const modal = document.getElementById('userModal');
+  modal.classList.toggle('hidden');
+  if (!modal.classList.contains('hidden')) {
+    document.getElementById('inputNickname').value = supabaseDB.user.isLoggedIn ? supabaseDB.user.nickname : '';
+  }
+}
+
+async function handleLogin() {
+  const input = document.getElementById('inputNickname').value.trim();
+  if (!input) {
+    alert("닉네임 또는 이메일을 입력해주세요!");
+    return;
+  }
+  supabaseDB.login(input);
+  updateUserHeader();
+  toggleUserModal();
+  await loadUserPersonalization();
+  alert(`환영합니다, ${input}님! 내 단골 상품이 클라우드 DB와 연결되었습니다.`);
+}
+
+// 4. Load Dynamic Personalization from Supabase DB
+async function loadUserPersonalization() {
   const container = document.getElementById('favoritesList');
   if (!container) return;
 
   const favIds = await supabaseDB.getFavorites();
-  const favProducts = PRODUCT_DATABASE.filter(p => favIds.includes(p.id));
+  const searchHistory = supabaseDB.getSearchHistory();
 
-  container.innerHTML = favProducts.map(p => `
-    <div class="fav-item flex items-center space-x-2 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 px-3 py-2 rounded-2xl cursor-pointer transition flex-shrink-0" data-id="${p.id}">
-      <img src="${p.image}" class="w-8 h-8 rounded-xl object-cover border border-white shadow-xs">
+  // Combine user's favorited items + recently searched items
+  let itemsToShow = [];
+
+  // Favorited products
+  favIds.forEach(id => {
+    const p = PRODUCT_DATABASE.find(item => item.id === id);
+    if (p && !itemsToShow.some(i => i.id === p.id)) itemsToShow.push(p);
+  });
+
+  // Recently searched items
+  searchHistory.forEach(h => {
+    if (!itemsToShow.some(i => i.name === h.name)) {
+      itemsToShow.push({
+        id: h.id,
+        name: h.name,
+        image: h.image,
+        offlineMartPrice: h.martPrice
+      });
+    }
+  });
+
+  if (itemsToShow.length === 0) {
+    container.innerHTML = `
+      <div class="py-2.5 px-3 bg-slate-100/70 rounded-2xl text-[11px] text-slate-500 w-full text-center">
+        💡 상품을 검색하거나 하트(❤️)를 누르면 내 단골 목록이 여기에 자동으로 저장됩니다!
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = itemsToShow.map(p => `
+    <div class="fav-item flex items-center space-x-2 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 px-3 py-2 rounded-2xl cursor-pointer transition flex-shrink-0 shadow-2xs" data-keyword="${p.name}">
+      <img src="${p.image}" class="w-8 h-8 rounded-xl object-cover border border-slate-100 bg-slate-50">
       <div class="text-left">
-        <div class="text-xs font-bold text-slate-800">${p.name.split(' ')[1] || p.name.split(' ')[0]}</div>
-        <div class="text-[10px] text-slate-400 font-medium">${p.offlineMartPrice.toLocaleString()}원</div>
+        <div class="text-xs font-bold text-slate-800 truncate max-w-[90px]">${p.name.split(' ')[1] || p.name.split(' ')[0]}</div>
+        <div class="text-[10px] text-slate-400 font-medium">${p.offlineMartPrice ? p.offlineMartPrice.toLocaleString() + '원' : '조회'}</div>
       </div>
     </div>
   `).join('');
 
   document.querySelectorAll('.fav-item').forEach(el => {
     el.addEventListener('click', () => {
-      const prod = PRODUCT_DATABASE.find(p => p.id === el.dataset.id);
-      if (prod) applyProduct(prod);
+      selectProductByKeyword(el.dataset.keyword);
     });
   });
 }
@@ -111,7 +161,7 @@ async function loadFavorites() {
 async function toggleCurrentFavorite() {
   if (!currentProduct) return;
   await supabaseDB.toggleFavorite(currentProduct.id);
-  await loadFavorites();
+  await loadUserPersonalization();
   await updateHeartButton();
 }
 
@@ -130,7 +180,7 @@ async function updateHeartButton() {
   lucide.createIcons();
 }
 
-// 4. Product Selection & Search
+// 5. Product Search with Real Retail Image Scraping
 function selectProductByKeyword(query) {
   if (!query) return;
   const cleanQuery = query.trim();
@@ -161,42 +211,45 @@ function selectProductByKeyword(query) {
         { martName: "롯데마트", badge: "정가", price: 4500, unitPrice: 4500, rank: 4, note: "정상가" }
       ],
       stores: [
-        { mall: "네이버 도착보장", badge: "⚡ 내일 도착", deliveryText: "내일 도착 보장", price: 3900, shippingFee: 0, link: `https://shopping.naver.com/search/all?query=${encodeURIComponent(cleanQuery)}`, unitPrice: 3900 },
-        { mall: "쿠팡", badge: "🚀 로켓배송", deliveryText: "내일 새벽 7시 도착", price: 4100, shippingFee: 0, link: `https://www.coupang.com/np/search?q=${encodeURIComponent(cleanQuery)}`, unitPrice: 4100 }
+        { mall: "네이버 도착보장", badge: "⚡ 내일 도착", deliveryText: "내일 도착 보장", price: 3900, shippingFee: 0, link: `https://shopping.naver.com/search/all?query=${encodeURIComponent(cleanQuery)}`, unitPrice: 3900 }
       ],
       alternatives: []
     };
     applyProduct(dynamicProduct);
   }
 
+  // Live Backend Crawler for Real Packaging Image & Prices
   enrichWithLiveBackend(cleanQuery);
 }
 
 function applyProduct(product) {
   currentProduct = JSON.parse(JSON.stringify(product));
+  supabaseDB.saveSearchHistory(currentProduct.name, currentProduct);
   renderProductView();
+  loadUserPersonalization();
 }
 
 async function enrichWithLiveBackend(keyword) {
   try {
-    const res = await fetch(`http://localhost:3000/api/live-search?q=${encodeURIComponent(keyword)}`);
+    const res = await fetch(`/api/live-search?q=${encodeURIComponent(keyword)}`);
     if (res.ok) {
       const data = await res.json();
-      if (data.liveStores && currentProduct) {
+      if (currentProduct) {
         let updated = false;
-        if (data.liveStores.naver && data.liveStores.naver.length > 0) {
+
+        // 🖼️ Real packaging image from live shopping crawler!
+        if (data.productImage && data.productImage.startsWith('http')) {
+          currentProduct.image = data.productImage;
+          document.getElementById('productImg').src = data.productImage;
+          updated = true;
+        }
+
+        // Live prices
+        if (data.liveStores && data.liveStores.naver && data.liveStores.naver.length > 0) {
           currentProduct.stores = data.liveStores.naver;
           updated = true;
         }
-        if (data.liveStores.coupang && data.liveStores.coupang.length > 0) {
-          currentProduct.stores.unshift(...data.liveStores.coupang);
-          updated = true;
-        }
-        if (data.liveStores.ssg) {
-          const emart = currentProduct.marts.find(m => m.martName.includes("이마트"));
-          if (emart) emart.price = data.liveStores.ssg.price;
-          updated = true;
-        }
+
         if (updated) {
           renderVerdict();
           renderCurrentTabContent();
@@ -218,7 +271,7 @@ function handleSearch() {
   input.value = '';
 }
 
-// 5. Render Main Product View
+// 6. Render Main Product View
 function renderProductView() {
   if (!currentProduct) return;
 
@@ -234,7 +287,7 @@ function renderProductView() {
   lucide.createIcons();
 }
 
-// 6. 1-Second Verdict Calculation
+// 7. 1-Second Verdict Calculation
 function renderVerdict() {
   const banner = document.getElementById('verdictBanner');
   if (!currentProduct || !banner) return;
@@ -294,7 +347,7 @@ function renderVerdict() {
   }
 }
 
-// 7. Switch Main Tabs
+// 8. Switch Main Tabs
 function switchMainTab(tab) {
   activeMainTab = tab;
 
@@ -337,7 +390,7 @@ function switchOnlineSort(sort) {
   renderOnlineStoresView();
 }
 
-// 8. Render Tab Contents
+// 9. Render Tab Contents
 function renderCurrentTabContent() {
   const container = document.getElementById('offersContainer');
   if (!currentProduct || !container) return;
@@ -355,7 +408,7 @@ function renderCurrentTabContent() {
   lucide.createIcons();
 }
 
-// 9. Render Marts View (Clean List)
+// 10. Render Marts View (Clean List)
 function renderMartsView(container) {
   const marts = currentProduct.marts || [];
 
@@ -392,7 +445,7 @@ function renderMartsView(container) {
   });
 }
 
-// 10. Render Online Stores View
+// 11. Render Online Stores View
 function renderOnlineStoresView(container) {
   let sortedStores = [...currentProduct.stores];
 
@@ -435,7 +488,7 @@ function renderOnlineStoresView(container) {
   });
 }
 
-// 11. Render Alternatives View
+// 12. Render Alternatives View
 function renderAlternativesView(container) {
   const alts = currentProduct.alternatives || [];
 
@@ -462,7 +515,7 @@ function renderAlternativesView(container) {
   });
 }
 
-// 12. Camera Scanner Logic
+// 13. Camera Scanner Logic
 function openScanner() {
   const modal = document.getElementById('cameraModal');
   modal.classList.remove('hidden');
@@ -477,7 +530,6 @@ function openScanner() {
     { facingMode: "environment" },
     config,
     (decodedText) => {
-      playBeep();
       closeScanner();
       selectProductByKeyword(decodedText);
     },
@@ -496,30 +548,4 @@ function closeScanner() {
       isScannerRunning = false;
     }).catch(err => console.error("Stop error:", err));
   }
-}
-
-// 13. Free Supabase DB Settings Modal
-function toggleApiSettings() {
-  const modal = document.getElementById('apiSettingsModal');
-  modal.classList.toggle('hidden');
-}
-
-function loadApiSettings() {
-  document.getElementById('cfgSupabaseUrl').value = localStorage.getItem('SUPABASE_URL') || '';
-  document.getElementById('cfgSupabaseKey').value = localStorage.getItem('SUPABASE_ANON_KEY') || '';
-}
-
-function saveApiSettings() {
-  const url = document.getElementById('cfgSupabaseUrl').value.trim();
-  const key = document.getElementById('cfgSupabaseKey').value.trim();
-
-  localStorage.setItem('SUPABASE_URL', url);
-  localStorage.setItem('SUPABASE_ANON_KEY', key);
-
-  SUPABASE_CONFIG.url = url;
-  SUPABASE_CONFIG.anonKey = key;
-
-  alert("무료 Supabase 클라우드 DB 설정이 저장되었습니다!");
-  toggleApiSettings();
-  loadFavorites();
 }

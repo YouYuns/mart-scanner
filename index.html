@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>마트나침반 | 깔끔한 마트 vs 온라인 가격비교</title>
+  <title>마트나침반 | 실시간 마트 vs 온라인 가격비교</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -17,35 +17,36 @@
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased">
 
-  <!-- Mobile App Frame (Max 480px on Desktop, 100% on Mobile) -->
+  <!-- Mobile App Frame Container -->
   <div class="w-full max-w-md min-h-screen bg-white shadow-xl flex flex-col relative pb-24 border-x border-slate-100">
     
     <!-- Minimalist Top Navigation Header -->
-    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
         <h1 class="text-base font-extrabold tracking-tight text-slate-900">마트나침반</h1>
       </div>
-      <div class="flex items-center space-x-1">
+      <div class="flex items-center space-x-1.5">
+        <button id="btnOpenUserModal" class="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition text-xs font-bold text-slate-700">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span id="headerUserNickname">로그인</span>
+        </button>
         <button id="btnOpenScanner" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-700" title="바코드 스캔">
           <i data-lucide="camera" class="w-5 h-5"></i>
-        </button>
-        <button id="btnOpenApiSettings" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-400 hover:text-slate-700" title="무료 DB & API 설정">
-          <i data-lucide="settings" class="w-4 h-4"></i>
         </button>
       </div>
     </header>
 
     <!-- Main Scrollable Content -->
-    <main class="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
+    <main class="flex-1 px-4 py-3.5 space-y-4 overflow-y-auto">
 
-      <!-- 🔍 Clean Minimalist Search Bar -->
+      <!-- 🔍 Clean Search Bar -->
       <div class="relative">
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="상품명이나 바코드를 검색하세요 (예: 신라면, 햇반)" 
-          class="w-full pl-10 pr-16 py-3 bg-slate-100/90 text-slate-900 placeholder-slate-400 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+          placeholder="상품명 또는 880 바코드를 입력하세요" 
+          class="w-full pl-10 pr-16 py-3 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-2xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
         >
         <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
         <button 
@@ -56,28 +57,28 @@
         </button>
       </div>
 
-      <!-- ⭐ Personalized Section: "내가 자주 사는 단골 상품" (DB 저장 연동) -->
+      <!-- ⭐ Personalized Section: "내 맞춤 단골 & 최근 상품" (DB 연동) -->
       <div class="space-y-2">
         <div class="flex items-center justify-between px-1">
           <span class="text-xs font-bold text-slate-800 flex items-center">
             <i data-lucide="star" class="w-3.5 h-3.5 text-amber-500 mr-1 fill-amber-500"></i>
-            내가 자주 사는 단골 상품
+            <span id="favoritesTitle">내 단골 & 최근 찾은 상품</span>
           </span>
-          <span class="text-[11px] text-slate-400">원클릭 실시간 조회</span>
+          <span class="text-[11px] text-slate-400">DB 실시간 연동</span>
         </div>
 
-        <!-- Horizontal Scrollable Favorites Chips with Real Product Photos -->
-        <div id="favoritesList" class="flex space-x-2.5 overflow-x-auto no-scrollbar pb-1 pt-0.5">
-          <!-- Populated by JS -->
+        <!-- Dynamic Horizontal Favorites Carousel from DB -->
+        <div id="favoritesList" class="flex space-x-2 overflow-x-auto no-scrollbar pb-1 pt-0.5">
+          <!-- Populated dynamically by JS -->
         </div>
       </div>
 
-      <!-- 📦 Main Scanned / Selected Product Card with Real Image -->
+      <!-- 📦 Main Scanned / Selected Product Card with Real Package Image -->
       <div id="productSummaryCard" class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 space-y-3.5">
         <div class="flex space-x-3.5">
-          <div class="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex-shrink-0">
+          <div class="relative w-24 h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex-shrink-0 flex items-center justify-center">
             <img id="productImg" src="" alt="상품 실물 사진" class="w-full h-full object-cover">
-            <button id="btnToggleFavorite" class="absolute top-1.5 right-1.5 p-1 bg-white/80 backdrop-blur-xs rounded-full text-slate-400 hover:text-rose-500 transition shadow-xs">
+            <button id="btnToggleFavorite" class="absolute top-1.5 right-1.5 p-1 bg-white/90 backdrop-blur-xs rounded-full text-slate-400 hover:text-rose-500 transition shadow-xs">
               <i data-lucide="heart" class="w-3.5 h-3.5"></i>
             </button>
           </div>
@@ -91,7 +92,7 @@
               <h2 id="productName" class="text-base font-black text-slate-900 truncate mt-1"></h2>
             </div>
             
-            <!-- Clean Mart Offline Price -->
+            <!-- Mart Offline Price Input -->
             <div class="flex items-center space-x-2 bg-slate-50 rounded-xl px-2.5 py-1.5 border border-slate-100">
               <span class="text-xs text-slate-500 whitespace-nowrap">마트 현장가:</span>
               <div class="flex items-center flex-1">
@@ -109,13 +110,13 @@
           </div>
         </div>
 
-        <!-- Clean 1-Second Verdict Banner -->
+        <!-- 1-Second Verdict Banner -->
         <div id="verdictBanner" class="p-3.5 rounded-2xl flex items-center justify-between transition-all">
           <!-- Populated by JS -->
         </div>
       </div>
 
-      <!-- 3-Way Tabs: Clean & Minimalist -->
+      <!-- 3-Way Main Comparison Tabs -->
       <div id="tabNavigation" class="space-y-2">
         <div class="flex p-1 bg-slate-100 rounded-2xl font-bold text-xs text-slate-500 space-x-1">
           <button id="tabMarts" class="flex-1 py-2.5 rounded-xl transition text-slate-900 bg-white shadow-xs">
@@ -141,14 +142,45 @@
         </div>
       </div>
 
-      <!-- Comparison List Output Area -->
+      <!-- Comparison List Output Container -->
       <div id="offersContainer" class="space-y-2">
         <!-- Populated by JS -->
       </div>
 
     </main>
 
-    <!-- Scan Barcode Fullscreen Camera Modal -->
+    <!-- User Login / Profile Modal -->
+    <div id="userModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+      <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="user-check" class="w-5 h-5 text-blue-600"></i>
+            <h3 class="font-bold text-slate-900 text-sm">개인 맞춤 로그인 / 계정</h3>
+          </div>
+          <button id="btnCloseUserModal" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <p class="text-slate-500 leading-relaxed">
+            닉네임이나 이메일을 입력하시면 <strong>어떤 스마트폰에서 접속해도 내 단골 상품과 검색 기록</strong>이 Supabase DB에서 그대로 불러와집니다!
+          </p>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">내 닉네임 또는 이메일</label>
+            <input type="text" id="inputNickname" placeholder="예: 성호, 장보기대장, myid@kakao.com" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm font-bold">
+          </div>
+        </div>
+
+        <div class="flex space-x-2 pt-1">
+          <button id="btnLoginSubmit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition shadow-md">
+            로그인 및 내 DB 연결
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Barcode Camera Modal -->
     <div id="cameraModal" class="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-between p-4 hidden">
       <div class="w-full flex items-center justify-between text-white pt-2">
         <span class="font-bold text-sm">바코드 스캔</span>
@@ -163,45 +195,9 @@
           상품 바코드를 사각형 안에 비춰주세요
         </p>
       </div>
-
-      <div class="w-full max-w-sm space-y-2 pb-4">
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <button class="modal-test-btn py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition" data-keyword="신라면">신라면</button>
-          <button class="modal-test-btn py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition" data-keyword="햇반">햇반</button>
-          <button class="modal-test-btn py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition" data-keyword="스팸">스팸</button>
-        </div>
-      </div>
     </div>
 
-    <!-- Free Cloud DB & API Settings Modal -->
-    <div id="apiSettingsModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
-      <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 class="font-bold text-slate-900 text-sm">100% 무료 Supabase DB 설정</h3>
-          <button id="btnCloseApiSettings" class="text-slate-400 hover:text-slate-600">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <div class="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl text-[11px]">
-          🌱 <strong>비용 0원:</strong> Supabase 무료 계정의 Project URL과 Anon Key를 넣으시면 클라우드 DB와 실시간 동기화됩니다. (미입력 시에도 로컬 DB로 자동 구동)
-        </div>
-        <div class="space-y-3 text-xs">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">Supabase Project URL</label>
-            <input type="text" id="cfgSupabaseUrl" placeholder="https://xxx.supabase.co" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600">
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">Supabase Anon Key</label>
-            <input type="password" id="cfgSupabaseKey" placeholder="anon key 입력" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-600">
-          </div>
-        </div>
-        <button id="btnSaveApiKeys" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition shadow-md">
-          설정 저장
-        </button>
-      </div>
-    </div>
-
-    <!-- Minimalist Bottom App Bar -->
+    <!-- Bottom App Navigation Bar -->
     <nav class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-100 px-6 py-2.5 flex items-center justify-around z-20">
       <button id="navHome" class="flex flex-col items-center text-blue-600 space-y-0.5">
         <i data-lucide="compass" class="w-5 h-5"></i>
@@ -220,24 +216,6 @@
     </nav>
 
   </div>
-
-  <!-- Audio Beep -->
-  <script>
-    function playBeep() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.12);
-      } catch (e) {}
-    }
-  </script>
 
   <!-- Load Scripts -->
   <script src="data.js"></script>
