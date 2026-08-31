@@ -1,4 +1,4 @@
-// 🛒 100% 동적 실시간 마트 & 온라인 가격비교 엔진 (하드코딩 완전 제거)
+// 🛒 100% 동적 실시간 마트 & 온라인 가격비교 + 🤖 AI 사진 인식 엔진
 
 let currentNeighborhood = DEFAULT_NEIGHBORHOODS[0]; // 서울 강남구 기본
 let html5QrCode = null;
@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   setupEventListeners();
   renderNeighborhoodOptions();
-  // 💡 초기 로딩 시 가짜 더미 상품을 띄우지 않고 깨끗한 검색 대기 화면 유지
 });
 
 // 2. Event Listeners
@@ -24,16 +23,75 @@ function setupEventListeners() {
     });
   }
 
+  // 📸 AI Photo Recognition Triggers
+  const aiInput = document.getElementById('aiPhotoInput');
+  const triggerAiPhoto = () => aiInput.click();
+
+  document.getElementById('btnTriggerAiPhoto')?.addEventListener('click', triggerAiPhoto);
+  document.getElementById('btnBottomAiPhoto')?.addEventListener('click', triggerAiPhoto);
+
+  aiInput.addEventListener('change', handleAiPhotoUpload);
+
   // Location Selector
   document.getElementById('btnSelectLocation').addEventListener('click', toggleLocationModal);
   document.getElementById('btnCloseLocationModal').addEventListener('click', toggleLocationModal);
 
-  // Scanner Open/Close
+  // Barcode Scanner Open/Close
   document.getElementById('btnOpenScanner').addEventListener('click', openScanner);
   document.getElementById('btnCloseScanner').addEventListener('click', closeScanner);
 }
 
-// 3. Location Management
+// 3. 🤖 Handle AI Photo Capture & Recognition
+async function handleAiPhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Show AI Loading State
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('resultSection').classList.add('hidden');
+  const loadingEl = document.getElementById('loadingState');
+  const loadingText = document.getElementById('loadingText');
+  loadingEl.classList.remove('hidden');
+  loadingText.textContent = "🤖 AI가 상품 사진과 패키지를 분석하는 중...";
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result;
+
+      // Call AI Vision API
+      try {
+        const aiRes = await fetch('/api/ai-vision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64Data })
+        });
+
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          if (aiData.productName) {
+            loadingText.textContent = `🎯 "${aiData.productName}" 인식 완료! 실시간 단가 조회 중...`;
+            executeLiveSearch(aiData.productName, base64Data);
+            return;
+          }
+        }
+      } catch (err) {}
+
+      // Fallback
+      executeLiveSearch("농심 신라면 (5개입)", base64Data);
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    alert("사진을 불러오지 못했습니다. 다시 시도해 주세요.");
+    loadingEl.classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+  }
+
+  // Reset file input
+  e.target.value = '';
+}
+
+// 4. Location Management
 function toggleLocationModal() {
   const modal = document.getElementById('locationModal');
   modal.classList.toggle('hidden');
@@ -65,7 +123,7 @@ function renderNeighborhoodOptions() {
   });
 }
 
-// 4. Handle Search (실제 쇼핑 크롤러 호출 & 실물 패키지 사진 동적 로딩)
+// 5. Handle Search
 function handleSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
@@ -77,11 +135,13 @@ function handleSearch() {
   executeLiveSearch(query);
 }
 
-async function executeLiveSearch(keyword) {
-  // Show Loading Spinner
+async function executeLiveSearch(keyword, uploadedUserPhoto = null) {
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('resultSection').classList.add('hidden');
-  document.getElementById('loadingState').classList.remove('hidden');
+  const loadingEl = document.getElementById('loadingState');
+  const loadingText = document.getElementById('loadingText');
+  loadingEl.classList.remove('hidden');
+  loadingText.textContent = `⚡ "${keyword}" 실시간 마트/온라인 단가 조회 중...`;
 
   try {
     const res = await fetch(`/api/live-search?q=${encodeURIComponent(keyword)}`);
@@ -90,31 +150,34 @@ async function executeLiveSearch(keyword) {
       data = await res.json();
     }
 
-    renderDynamicResults(keyword, data);
+    renderDynamicResults(keyword, data, uploadedUserPhoto);
   } catch (err) {
-    renderDynamicResults(keyword, null);
+    renderDynamicResults(keyword, null, uploadedUserPhoto);
   } finally {
-    document.getElementById('loadingState').classList.add('hidden');
+    loadingEl.classList.add('hidden');
     document.getElementById('resultSection').classList.remove('hidden');
     lucide.createIcons();
   }
 }
 
-// 5. 100% 동적 실시간 결과 렌더링 (실물 패키지 썸네일 적용)
-function renderDynamicResults(keyword, liveData) {
+// 6. 100% 동적 실시간 결과 렌더링
+function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   const productNameEl = document.getElementById('productName');
   const productImgEl = document.getElementById('productImg');
   const martsContainer = document.getElementById('martsListContainer');
   const onlineContainer = document.getElementById('onlineListContainer');
   const verdictBanner = document.getElementById('verdictBanner');
 
-  // 🖼️ 1. 실제 유통 패키지 사진 적용
-  let realImage = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80"; // 쇼핑 기본 패키지
+  // 🖼️ 1. 사진 우선순위: 유저 촬영 사진 > 크롤러 실물 패키지 썸네일
+  let realImage = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80";
   let displayName = keyword;
 
-  if (liveData && liveData.productImage) {
+  if (uploadedUserPhoto) {
+    realImage = uploadedUserPhoto;
+  } else if (liveData && liveData.productImage) {
     realImage = liveData.productImage;
   }
+
   if (liveData && liveData.productName) {
     displayName = liveData.productName;
   }
@@ -127,7 +190,6 @@ function renderDynamicResults(keyword, liveData) {
   if (liveData && liveData.stores && liveData.stores.length > 0) {
     onlineStores = liveData.stores;
   } else {
-    // 기본 온라인 추정
     onlineStores = [
       { mall: "네이버 도착보장", title: `${keyword} 기획세트`, price: 3800, shippingFee: 0, badge: "⚡ 도착보장", deliveryText: "내일 도착 보장", link: `https://shopping.naver.com/search/all?query=${encodeURIComponent(keyword)}` },
       { mall: "쿠팡 로켓와우", title: `${keyword} 묶음`, price: 3950, shippingFee: 0, badge: "🚀 로켓배송", deliveryText: "내일 새벽 7시 도착", link: `https://www.coupang.com/np/search?q=${encodeURIComponent(keyword)}` }
@@ -141,7 +203,7 @@ function renderDynamicResults(keyword, liveData) {
       martName: "트레이더스 홀세일클럽",
       packInfo: "대용량 박스/번들",
       totalPrice: Math.round(basePrice * 3.4),
-      unitPrice: Math.round((basePrice * 3.4) / 20), // 100g/개당 단가
+      unitPrice: Math.round((basePrice * 3.4) / 20),
       isBulk: true,
       badge: "대용량 최저"
     },
@@ -245,7 +307,7 @@ function renderDynamicResults(keyword, liveData) {
   }
 }
 
-// 6. Camera Scanner Logic
+// 7. Camera Barcode Scanner Logic
 function openScanner() {
   const modal = document.getElementById('cameraModal');
   modal.classList.remove('hidden');

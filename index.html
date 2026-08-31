@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>마트나침반 | 실시간 100g당 가격비교</title>
+  <title>마트나침반 | AI 사진 인식 & 실시간 100g 단가비교</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -17,10 +17,10 @@
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex justify-center selection:bg-blue-500 selection:text-white antialiased">
 
-  <!-- Mobile App Container -->
+  <!-- Mobile App Frame -->
   <div class="w-full max-w-md min-h-screen bg-white shadow-2xl flex flex-col relative pb-20 border-x border-slate-200">
     
-    <!-- Ultra Clean Header with Location Picker -->
+    <!-- Top Header -->
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex items-center justify-between">
       <div class="flex items-center space-x-2">
         <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
@@ -38,45 +38,62 @@
     <!-- Main Content Area -->
     <main class="flex-1 px-4 py-3.5 space-y-3.5 overflow-y-auto">
 
-      <!-- 🔍 Clean Minimalist Search Bar -->
-      <div class="relative">
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="상품명이나 바코드를 검색하세요 (예: 신라면, 햇반)" 
-          class="w-full pl-9 pr-14 py-2.5 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-xl text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-        >
-        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-        <button 
-          id="btnSearch" 
-          class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-black transition shadow-xs"
-        >
-          검색
-        </button>
+      <!-- 🔍 Search Bar with Quick Action Buttons -->
+      <div class="space-y-2">
+        <div class="relative">
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="상품명 또는 880 바코드 입력" 
+            class="w-full pl-9 pr-14 py-2.5 bg-slate-100 text-slate-900 placeholder-slate-400 rounded-xl text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+          >
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <button 
+            id="btnSearch" 
+            class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-black transition shadow-xs"
+          >
+            검색
+          </button>
+        </div>
+
+        <!-- 📸 Quick Camera Options: AI Photo vs Barcode -->
+        <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+          <button id="btnTriggerAiPhoto" class="py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition active:scale-98">
+            <i data-lucide="sparkles" class="w-4 h-4 text-yellow-300"></i>
+            <span>📸 AI 사진으로 찾기</span>
+          </button>
+          <button id="btnOpenScanner" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl border border-slate-200 flex items-center justify-center space-x-1.5 transition active:scale-98">
+            <i data-lucide="scan" class="w-4 h-4 text-slate-600"></i>
+            <span>📷 바코드 스캔</span>
+          </button>
+        </div>
       </div>
 
-      <!-- ⏳ Loading State (Hidden by default) -->
+      <!-- Hidden Native Camera File Input for AI Vision -->
+      <input type="file" id="aiPhotoInput" accept="image/*" capture="environment" class="hidden">
+
+      <!-- ⏳ Loading / AI Analyzing State -->
       <div id="loadingState" class="hidden py-12 text-center space-y-3">
         <div class="inline-block w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-xs font-bold text-slate-500">실시간 유통 패키지 사진 및 마트/온라인 가격 조회 중...</p>
+        <p id="loadingText" class="text-xs font-bold text-slate-600">실시간 유통 패키지 사진 및 마트/온라인 가격 조회 중...</p>
       </div>
 
-      <!-- 📭 Empty Initial State (Shown when no search has been made yet) -->
-      <div id="emptyState" class="py-14 text-center space-y-3 px-4">
+      <!-- 📭 Empty Initial State -->
+      <div id="emptyState" class="py-12 text-center space-y-3 px-4">
         <div class="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
-          🛒
+          📸
         </div>
-        <h3 class="text-sm font-black text-slate-800">구매할 상품을 검색해 보세요</h3>
+        <h3 class="text-sm font-black text-slate-800">상품 사진을 찍거나 검색해 보세요</h3>
         <p class="text-xs text-slate-400 leading-relaxed">
-          상품명이나 바코드를 입력하시면<br>
-          <strong>내 근처 마트 vs 온라인 실시간 100g당 단가</strong>를 즉시 비교해 드립니다.
+          상품 겉면을 <strong>AI 사진으로 촬영</strong>하거나 바코드를 찍으시면<br>
+          <strong>내 근처 마트 vs 온라인 실시간 100g당 단가</strong>를 즉시 비교합니다.
         </p>
       </div>
 
       <!-- 📦 Main Search Result (Hidden until searched) -->
       <div id="resultSection" class="hidden space-y-3.5">
         
-        <!-- Product Header Card with Real Scraped Package Image -->
+        <!-- Product Header Card with Real Package Image -->
         <div class="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200 space-y-2.5">
           <div class="flex space-x-3 items-center">
             <div id="productImgContainer" class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white flex-shrink-0 flex items-center justify-center">
@@ -141,17 +158,17 @@
       </div>
     </div>
 
-    <!-- Floating Bottom Bar for Camera Barcode Scan -->
+    <!-- Floating Bottom Bar for Quick Actions -->
     <div class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 flex items-center justify-between z-20">
       <div class="text-[11px] font-bold text-slate-500">
-        마트에서 바코드 찍고 100g당 단가 즉시 비교
+        AI 사진 또는 바코드로 100g당 단가 비교
       </div>
       <button 
-        id="btnOpenScanner" 
-        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-md flex items-center space-x-1 transition active:scale-95"
+        id="btnBottomAiPhoto" 
+        class="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-black text-xs shadow-md flex items-center space-x-1 transition active:scale-95"
       >
         <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-        <span>바코드 스캔</span>
+        <span>AI 사진 촬영</span>
       </button>
     </div>
 
