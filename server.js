@@ -1,4 +1,4 @@
-// 🛒 실시간 마트 5사 & 온라인 쇼핑몰 실물 제품 패키지 사진 & 라이브 가격 크롤러
+// 🛒 실시간 마트 및 온라인 쇼핑몰 실물 제품 패키지 사진 & 가격 라이브 크롤링 서버
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -35,8 +35,8 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// 2. 네이버 쇼핑 실시간 크롤러 (실제 유통 패키지 사진 + 실시간 가격 추출)
-async function scrapeNaverShoppingLive(keyword) {
+// 2. 실시간 네이버 쇼핑 크롤러 (실제 판매용 패키지 사진 + 실시간 가격)
+async function searchLiveShopping(keyword) {
   try {
     const url = `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(keyword)}`;
     const { data } = await axios.get(url, {
@@ -48,8 +48,9 @@ async function scrapeNaverShoppingLive(keyword) {
     });
 
     const $ = cheerio.load(data);
-    const results = [];
-    let mainProductImage = null;
+    const stores = [];
+    let realProductImage = null;
+    let mainProductTitle = keyword;
 
     $('[class*="product_item"]').slice(0, 5).each((i, el) => {
       const title = $(el).find('[class*="product_title"]').text().trim();
@@ -57,34 +58,44 @@ async function scrapeNaverShoppingLive(keyword) {
       const mallName = $(el).find('[class*="product_mall"]').text().trim() || "네이버 쇼핑";
       const link = $(el).find('a[class*="product_link"]').attr('href') || "https://shopping.naver.com";
       const isFast = $(el).text().includes('도착보장') || $(el).text().includes('오늘출발');
-      const imgSrc = $(el).find('img[class*="thumbnail_thumb"]').attr('src') || $(el).find('img').attr('src');
+      
+      // 실제 유통 제품 썸네일 이미지 추출
+      let imgSrc = $(el).find('img[class*="thumbnail_thumb"]').attr('src') || $(el).find('img').attr('src');
+      if (imgSrc && imgSrc.startsWith('//')) imgSrc = 'https:' + imgSrc;
 
-      if (imgSrc && !mainProductImage && imgSrc.startsWith('http')) {
-        mainProductImage = imgSrc;
+      if (imgSrc && !realProductImage && imgSrc.startsWith('http')) {
+        realProductImage = imgSrc;
+        mainProductTitle = title;
       }
 
       if (title && priceText) {
         const price = parseInt(priceText);
-        results.push({
+        stores.push({
           title: title,
           mall: mallName,
           type: isFast ? "naver_fast" : "normal",
-          badge: isFast ? "⚡ 도착보장" : "📦 일반택배",
+          badge: isFast ? "⚡ 도착보장" : "📦 무료배송",
           deliveryText: isFast ? "내일 도착 보장" : "2~3일 내 도착",
-          deliverySpeedRank: isFast ? 1 : 2,
           price: price,
           shippingFee: 0,
           image: imgSrc || null,
           link: link.startsWith('http') ? link : `https://search.shopping.naver.com${link}`,
-          unitPrice: Math.round(price / 5),
-          inStock: true
+          unitPrice: Math.round(price / 5)
         });
       }
     });
 
-    return { stores: results, productImage: mainProductImage };
+    return {
+      title: mainProductTitle || keyword,
+      productImage: realProductImage,
+      stores: stores
+    };
   } catch (err) {
-    return { stores: [], productImage: null };
+    return {
+      title: keyword,
+      productImage: null,
+      stores: []
+    };
   }
 }
 
@@ -94,15 +105,13 @@ app.get('/api/live-search', async (req, res) => {
   if (!query) return res.status(400).json({ error: "Query required" });
 
   try {
-    const naverData = await scrapeNaverShoppingLive(query);
-
+    const liveData = await searchLiveShopping(query);
     res.json({
       success: true,
       query: query,
-      productImage: naverData.productImage,
-      liveStores: {
-        naver: naverData.stores
-      }
+      productName: liveData.title,
+      productImage: liveData.productImage,
+      stores: liveData.stores
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -110,5 +119,5 @@ app.get('/api/live-search', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 마트나침반 실시간 이미지/가격 서버 구동 완료: http://localhost:${PORT}`);
+  console.log(`🚀 마트나침반 실시간 서버 구동 완료: http://localhost:${PORT}`);
 });
