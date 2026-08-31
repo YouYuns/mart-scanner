@@ -1,4 +1,4 @@
-// 🛒 100% 동적 실시간 마트 & 온라인 가격비교 + 🤖 AI 사진 인식 엔진
+// 🛒 100% 동적 실시간 마트 & 온라인 가격비교 + 🤖 AI 올인원 스마트 카메라
 
 let currentNeighborhood = DEFAULT_NEIGHBORHOODS[0]; // 서울 강남구 기본
 let html5QrCode = null;
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderNeighborhoodOptions();
 });
 
-// 2. Event Listeners
+// 2. Event Listeners Wiring
 function setupEventListeners() {
   const searchInput = document.getElementById('searchInput');
   const btnSearch = document.getElementById('btnSearch');
@@ -23,30 +23,73 @@ function setupEventListeners() {
     });
   }
 
-  // 📸 AI Photo Recognition Triggers
+  // 🌟 Single Unified AI Smart Camera Button
+  const btnOpenSmartCamera = document.getElementById('btnOpenSmartCamera');
+  if (btnOpenSmartCamera) {
+    btnOpenSmartCamera.addEventListener('click', openSmartCamera);
+  }
+
+  // Inside Modal Photo Shutter Button
   const aiInput = document.getElementById('aiPhotoInput');
-  const triggerAiPhoto = () => aiInput.click();
-
-  document.getElementById('btnTriggerAiPhoto')?.addEventListener('click', triggerAiPhoto);
-  document.getElementById('btnBottomAiPhoto')?.addEventListener('click', triggerAiPhoto);
-
+  document.getElementById('btnSnapPhotoInsideModal')?.addEventListener('click', () => {
+    closeScanner();
+    aiInput.click();
+  });
   aiInput.addEventListener('change', handleAiPhotoUpload);
 
   // Location Selector
   document.getElementById('btnSelectLocation').addEventListener('click', toggleLocationModal);
   document.getElementById('btnCloseLocationModal').addEventListener('click', toggleLocationModal);
 
-  // Barcode Scanner Open/Close
-  document.getElementById('btnOpenScanner').addEventListener('click', openScanner);
+  // Scanner Close Button
   document.getElementById('btnCloseScanner').addEventListener('click', closeScanner);
 }
 
-// 3. 🤖 Handle AI Photo Capture & Recognition
+// 3. 📸 Unified Smart Camera Handler (Barcode + Photo in One)
+function openSmartCamera() {
+  const modal = document.getElementById('cameraModal');
+  modal.classList.remove('hidden');
+
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("reader");
+  }
+
+  const config = { fps: 15, qrbox: { width: 240, height: 140 }, aspectRatio: 1.333334 };
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      // 🎯 Barcode detected automatically!
+      closeScanner();
+      executeLiveSearch(decodedText);
+    },
+    () => {}
+  ).then(() => {
+    isScannerRunning = true;
+  }).catch(err => {
+    console.warn("Camera video stream init, falling back to native shutter:", err);
+    closeScanner();
+    document.getElementById('aiPhotoInput').click();
+  });
+}
+
+function closeScanner() {
+  const modal = document.getElementById('cameraModal');
+  modal.classList.add('hidden');
+
+  if (html5QrCode && isScannerRunning) {
+    html5QrCode.stop().then(() => {
+      isScannerRunning = false;
+    }).catch(err => console.error("Stop error:", err));
+  }
+}
+
+// 4. 🤖 AI Photo Capture Handler
 async function handleAiPhotoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Show AI Loading State
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('resultSection').classList.add('hidden');
   const loadingEl = document.getElementById('loadingState');
@@ -59,7 +102,6 @@ async function handleAiPhotoUpload(e) {
     reader.onload = async () => {
       const base64Data = reader.result;
 
-      // Call AI Vision API
       try {
         const aiRes = await fetch('/api/ai-vision', {
           method: 'POST',
@@ -70,28 +112,26 @@ async function handleAiPhotoUpload(e) {
         if (aiRes.ok) {
           const aiData = await aiRes.json();
           if (aiData.productName) {
-            loadingText.textContent = `🎯 "${aiData.productName}" 인식 완료! 실시간 단가 조회 중...`;
+            loadingText.textContent = `🎯 "${aiData.productName}" 인식 완료! 실시간 단가 비교 중...`;
             executeLiveSearch(aiData.productName, base64Data);
             return;
           }
         }
       } catch (err) {}
 
-      // Fallback
       executeLiveSearch("농심 신라면 (5개입)", base64Data);
     };
     reader.readAsDataURL(file);
   } catch (err) {
-    alert("사진을 불러오지 못했습니다. 다시 시도해 주세요.");
+    alert("사진을 불러오지 못했습니다.");
     loadingEl.classList.add('hidden');
     document.getElementById('emptyState').classList.remove('hidden');
   }
 
-  // Reset file input
   e.target.value = '';
 }
 
-// 4. Location Management
+// 5. Location Management
 function toggleLocationModal() {
   const modal = document.getElementById('locationModal');
   modal.classList.toggle('hidden');
@@ -123,7 +163,7 @@ function renderNeighborhoodOptions() {
   });
 }
 
-// 5. Handle Search
+// 6. Handle Search
 function handleSearch() {
   const input = document.getElementById('searchInput');
   if (!input) return;
@@ -160,7 +200,7 @@ async function executeLiveSearch(keyword, uploadedUserPhoto = null) {
   }
 }
 
-// 6. 100% 동적 실시간 결과 렌더링
+// 7. 100% 동적 정밀 단가 비교 렌더링
 function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   const productNameEl = document.getElementById('productName');
   const productImgEl = document.getElementById('productImg');
@@ -168,7 +208,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   const onlineContainer = document.getElementById('onlineListContainer');
   const verdictBanner = document.getElementById('verdictBanner');
 
-  // 🖼️ 1. 사진 우선순위: 유저 촬영 사진 > 크롤러 실물 패키지 썸네일
+  // 🖼️ 사진 우선순위: 유저 촬영 사진 > 크롤러 실물 썸네일
   let realImage = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80";
   let displayName = keyword;
 
@@ -185,7 +225,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   productNameEl.textContent = displayName;
   productImgEl.src = realImage;
 
-  // 🌐 2. 온라인 실시간 가격 리스트
+  // 🌐 온라인 실시간 가격
   let onlineStores = [];
   if (liveData && liveData.stores && liveData.stores.length > 0) {
     onlineStores = liveData.stores;
@@ -196,7 +236,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
     ];
   }
 
-  // 🏬 3. 내 근처 마트 실시간 가격 산출 (소용량 vs 트레이더스 대용량 환산)
+  // 🏬 내 근처 마트 단가 산출
   const basePrice = onlineStores[0]?.price || 4000;
   const martPrices = [
     {
@@ -304,40 +344,5 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
       </div>
       <span class="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded">마트 추천</span>
     `;
-  }
-}
-
-// 7. Camera Barcode Scanner Logic
-function openScanner() {
-  const modal = document.getElementById('cameraModal');
-  modal.classList.remove('hidden');
-
-  if (!html5QrCode) {
-    html5QrCode = new Html5Qrcode("reader");
-  }
-
-  const config = { fps: 15, qrbox: { width: 240, height: 140 }, aspectRatio: 1.333334 };
-
-  html5QrCode.start(
-    { facingMode: "environment" },
-    config,
-    (decodedText) => {
-      closeScanner();
-      executeLiveSearch(decodedText);
-    },
-    () => {}
-  ).then(() => {
-    isScannerRunning = true;
-  }).catch(err => console.warn("Camera init:", err));
-}
-
-function closeScanner() {
-  const modal = document.getElementById('cameraModal');
-  modal.classList.add('hidden');
-
-  if (html5QrCode && isScannerRunning) {
-    html5QrCode.stop().then(() => {
-      isScannerRunning = false;
-    }).catch(err => console.error("Stop error:", err));
   }
 }
