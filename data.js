@@ -1,7 +1,15 @@
-// 🛒 지역 목록 설정 (하드코딩 더미 상품 완전 삭제)
+// 🛒 전국 위치 목록 & 마트 브랜드 체인 설정
+
 const DEFAULT_NEIGHBORHOODS = [
-  { id: "gangnam", name: "서울 강남구 (역삼/서초)", marts: ["이마트 역삼점", "트레이더스 위례점", "홈플러스 스페셜", "롯데마트 서초점"] },
-  { id: "songpa", name: "서울 송파구 (잠실/문정)", marts: ["롯데마트 제타플렉스 잠실", "트레이더스 송파점", "홈플러스 잠실점", "이마트 가든파이브"] },
-  { id: "mapo", name: "서울 마포/영등포", marts: ["이마트 마포점", "홈플러스 영등포점", "코스트코 양평점", "트레이더스 영등포점"] },
-  { id: "bundang", name: "경기 성남/분당", marts: ["이마트 분당점", "트레이더스 구성점", "홈플러스 야탑점", "롯데마트 판교점"] }
+  { id: "gps", name: "📡 내 현재 GPS 위치 (자동)", region: "GPS 자동 위치" },
+  { id: "gangnam", name: "서울 강남/서초", region: "서울 강남구" },
+  { id: "songpa", name: "서울 송파/강동", region: "서울 송파구" },
+  { id: "mapo", name: "서울 마포/영등포/여의도", region: "서울 영등포구" },
+  { id: "jongno", name: "서울 종로/중구/용산", region: "서울 용산구" },
+  { id: "bundang", name: "경기 성남/분당/판교", region: "경기 성남시" },
+  { id: "suwon", name: "경기 수원/용인/화성", region: "경기 수원시" },
+  { id: "incheon", name: "인천 송도/부평", region: "인천 연수구" },
+  { id: "busan", name: "부산 해운대/서면", region: "부산 해운대구" },
+  { id: "daegu", name: "대구 수성/중구", region: "대구 수성구" },
+  { id: "daejeon", name: "대전 둔산/유성", region: "대전 유성구" }
 ];

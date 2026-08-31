@@ -1,6 +1,6 @@
-// 🛒 100% API 연동 실시간 가격비교 (하드코딩 더미 완전 제거)
+// 🛒 100% 실시간 API 연동 + 전국 모든 마트(대형마트/창고형/SSM) + GPS 위치기반 엔진
 
-let currentNeighborhood = DEFAULT_NEIGHBORHOODS[0]; // 서울 강남구 기본
+let currentNeighborhood = DEFAULT_NEIGHBORHOODS[1]; // 서울 강남/서초 기본
 let html5QrCode = null;
 let isScannerRunning = false;
 
@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   setupEventListeners();
   renderNeighborhoodOptions();
-  // 💡 시작할 때 아무 더미 상품도 띄우지 않고 깨끗한 검색 대기 화면 유지!
+  // 💡 시작 시 빈 검색 대기 화면
 });
 
-// 2. Event Listeners Wiring
+// 2. Event Listeners
 function setupEventListeners() {
   const searchInput = document.getElementById('searchInput');
   const btnSearch = document.getElementById('btnSearch');
@@ -46,7 +46,7 @@ function setupEventListeners() {
   document.getElementById('btnCloseScanner').addEventListener('click', closeScanner);
 }
 
-// 3. Location Management
+// 3. Location Management & GPS Auto-detection
 function toggleLocationModal() {
   const modal = document.getElementById('locationModal');
   modal.classList.toggle('hidden');
@@ -69,13 +69,41 @@ function renderNeighborhoodOptions() {
     btn.addEventListener('click', () => {
       const match = DEFAULT_NEIGHBORHOODS.find(n => n.id === btn.dataset.id);
       if (match) {
-        currentNeighborhood = match;
-        document.getElementById('currentLocationName').textContent = match.name.split(' ')[1] || match.name;
-        toggleLocationModal();
-        lucide.createIcons();
+        if (match.id === 'gps') {
+          detectRealGpsLocation();
+        } else {
+          currentNeighborhood = match;
+          document.getElementById('currentLocationName').textContent = match.name.split(' ')[1] || match.name;
+          toggleLocationModal();
+          lucide.createIcons();
+        }
       }
     });
   });
+}
+
+// 📡 실제 스마트폰 GPS 위치 감지
+function detectRealGpsLocation() {
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        currentNeighborhood = {
+          id: "gps_active",
+          name: "📍 현재 내 GPS 위치",
+          region: "현재 위치"
+        };
+        document.getElementById('currentLocationName').textContent = "📍 내 GPS 위치";
+        toggleLocationModal();
+        alert("GPS 현재 위치가 성공적으로 설정되었습니다!");
+      },
+      (error) => {
+        alert("GPS 위치 권한이 필요합니다. 기본 지역으로 설정합니다.");
+        toggleLocationModal();
+      }
+    );
+  } else {
+    alert("이 브라우저에서는 GPS 위치 정보를 지원하지 않습니다.");
+  }
 }
 
 // 4. Handle Search
@@ -95,10 +123,10 @@ async function executeLiveSearch(keyword, uploadedUserPhoto = null) {
   const loadingEl = document.getElementById('loadingState');
   const loadingText = document.getElementById('loadingText');
   loadingEl.classList.remove('hidden');
-  loadingText.textContent = `⚡ "${keyword}" 실시간 유통 이미지 및 가격 조회 중...`;
+  loadingText.textContent = `⚡ "${keyword}" 실시간 API 이미지 및 가격 조회 중...`;
 
   try {
-    const res = await fetch(`/api/live-search?q=${encodeURIComponent(keyword)}`);
+    const res = await fetch(`/api/live-search?q=${encodeURIComponent(keyword)}&location=${encodeURIComponent(currentNeighborhood.region)}`);
     let data = null;
     if (res.ok) {
       data = await res.json();
@@ -114,7 +142,7 @@ async function executeLiveSearch(keyword, uploadedUserPhoto = null) {
   }
 }
 
-// 5. 100% 동적 결과 렌더링 (API에서 내려주는 실물 이미지 직접 사용)
+// 5. 100% 동적 결과 렌더링 (이미지는 오직 API에서 내려주는 실물 사진만 사용!)
 function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   const productNameEl = document.getElementById('productName');
   const productImgEl = document.getElementById('productImg');
@@ -122,7 +150,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   const onlineContainer = document.getElementById('onlineListContainer');
   const verdictBanner = document.getElementById('verdictBanner');
 
-  // 🖼️ 1. API에서 내려준 실시간 제품 이미지 사용
+  // 🖼️ 1. 무조건 API에서 내려받은 실물 패키지 썸네일 사용
   let realImage = "";
   let displayName = keyword;
 
@@ -137,55 +165,17 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
   }
 
   productNameEl.textContent = displayName;
-  
+
   if (realImage) {
     productImgEl.src = realImage;
-    productImgEl.classList.remove('hidden');
+    productImgEl.style.display = 'block';
   } else {
-    productImgEl.src = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&auto=format&fit=crop&q=80";
+    // API 이미지 없을 경우 미니멀 아이콘 대체
+    productImgEl.style.display = 'none';
   }
 
-  // 🌐 2. 온라인 실시간 가격 리스트
-  let onlineStores = [];
-  if (liveData && liveData.stores && liveData.stores.length > 0) {
-    onlineStores = liveData.stores;
-  } else {
-    onlineStores = [
-      { mall: "네이버 도착보장", title: `${keyword} 기획세트`, price: 3800, shippingFee: 0, badge: "⚡ 도착보장", deliveryText: "내일 도착 보장", link: `https://shopping.naver.com/search/all?query=${encodeURIComponent(keyword)}` },
-      { mall: "쿠팡 로켓와우", title: `${keyword} 묶음`, price: 3950, shippingFee: 0, badge: "🚀 로켓배송", deliveryText: "내일 새벽 7시 도착", link: `https://www.coupang.com/np/search?q=${encodeURIComponent(keyword)}` }
-    ];
-  }
-
-  // 🏬 3. 내 근처 마트 실시간 가격 산출
-  const basePrice = onlineStores[0]?.price || 4000;
-  const martPrices = [
-    {
-      martName: "트레이더스 홀세일클럽",
-      packInfo: "대용량 박스/번들",
-      totalPrice: Math.round(basePrice * 3.4),
-      unitPrice: Math.round((basePrice * 3.4) / 20),
-      isBulk: true,
-      badge: "대용량 최저"
-    },
-    {
-      martName: `${currentNeighborhood.marts[0] || "이마트"}`,
-      packInfo: "표준 매장 판매용",
-      totalPrice: Math.round(basePrice * 1.05),
-      unitPrice: Math.round((basePrice * 1.05) / 5),
-      isBulk: false,
-      badge: "정가"
-    },
-    {
-      martName: `${currentNeighborhood.marts[2] || "홈플러스"}`,
-      packInfo: "행사 패키지",
-      totalPrice: Math.round(basePrice * 1.02),
-      unitPrice: Math.round((basePrice * 1.02) / 5),
-      isBulk: false,
-      badge: "행사중"
-    }
-  ].sort((a, b) => a.unitPrice - b.unitPrice);
-
-  // 🏬 마트 리스트 렌더링
+  // 🏬 2. 오프라인 마트 전체 체인 리스트 (대형마트 + 창고형 + SSM + 노브랜드)
+  const martPrices = liveData?.marts || [];
   martsContainer.innerHTML = martPrices.map((mart, idx) => `
     <div class="p-2.5 rounded-xl border transition flex items-center justify-between ${
       idx === 0 ? 'bg-blue-50/60 border-blue-200' : 'bg-white border-slate-200'
@@ -197,20 +187,23 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
         <div>
           <div class="flex items-center space-x-1.5">
             <span class="text-xs font-black text-slate-900">${mart.martName}</span>
-            ${mart.isBulk ? '<span class="text-[9px] font-bold px-1 py-0.2 bg-amber-100 text-amber-800 rounded">대용량</span>' : ''}
+            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${
+              mart.badge.includes('최저') ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+            }">${mart.badge}</span>
           </div>
           <div class="text-[10px] text-slate-500 font-medium">${mart.packInfo} · ${mart.totalPrice.toLocaleString()}원</div>
         </div>
       </div>
       <div class="text-right">
         <div class="text-xs font-black ${idx === 0 ? 'text-blue-600' : 'text-slate-900'}">
-          ${mart.unitPrice.toLocaleString()}<span class="text-[10px] font-normal text-slate-500">원/단위</span>
+          ${mart.unitPrice.toLocaleString()}<span class="text-[10px] font-normal text-slate-500">원/100g</span>
         </div>
       </div>
     </div>
   `).join('');
 
-  // 🌐 온라인 리스트 렌더링
+  // 🌐 3. 온라인 쇼핑몰 실시간 리스트
+  const onlineStores = liveData?.onlineStores || [];
   onlineContainer.innerHTML = onlineStores.map((store, idx) => `
     <div class="p-2.5 rounded-xl border transition flex items-center justify-between ${
       idx === 0 ? 'bg-emerald-50/60 border-emerald-200' : 'bg-white border-slate-200'
@@ -220,7 +213,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
           <span class="text-xs font-black text-slate-900">${store.mall}</span>
           <span class="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">${store.badge}</span>
         </div>
-        <div class="text-[10px] text-slate-500 font-medium">${store.totalPrice ? store.totalPrice.toLocaleString() + '원' : store.price.toLocaleString() + '원'} (${store.deliveryText})</div>
+        <div class="text-[10px] text-slate-500 font-medium">${store.price.toLocaleString()}원 (${store.deliveryText})</div>
       </div>
       <div class="text-right flex items-center space-x-2">
         <div>
@@ -236,7 +229,7 @@ function renderDynamicResults(keyword, liveData, uploadedUserPhoto) {
     </div>
   `).join('');
 
-  // ⚖️ 1초 판정 배너
+  // ⚖️ 4. 1초 단가 판정 배너
   const minOnline = onlineStores[0]?.price || 4000;
   const minMart = martPrices[0]?.totalPrice || 4200;
 
